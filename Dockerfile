@@ -1,21 +1,17 @@
-FROM adoptopenjdk:17-jdk-hotspot
 
-# Instala o Maven
-RUN apt-get update
-RUN apt-get install -y maven
+FROM maven:3.8-openjdk-17 as build
 
-# Define o diretório de trabalho no contêiner
-WORKDIR /app
+COPY . .
 
-# Copie o arquivo pom.xml e o arquivo src para o diretório de trabalho
-COPY pom.xml .
-COPY src ./src
+RUN mvn clean package
 
-# Execute o comando 'mvn package' para construir o aplicativo
-RUN mvn package
+FROM ibm-semeru-runtimes:open-17-jre-centos7
 
-# Expõe a porta que a aplicação Spring irá escutar
+# Copy the jar to the production image from the builder stage.
+COPY --from=build /target/omimoodo-api.jar omimoodo-api.jar
+
+# ENV PORT=8080
 EXPOSE 8080
 
-# Comando para iniciar a aplicação Spring
-CMD ["java", "-jar", "target/omimoodo-api.jar"]
+# Run the web service on container startup.
+ENTRYPOINT ["java","-jar","omimoodo-api.jar"]
